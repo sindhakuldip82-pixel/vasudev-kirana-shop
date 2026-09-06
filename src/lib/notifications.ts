@@ -82,6 +82,8 @@ export async function sendNewOrderNotification(order: {
     body: `${order.orderNumber} • ${order.customerName} • ₹${order.total.toFixed(0)}`,
     url: `/admin/orders`,
     orderId: order.id,
+    orderNumber: order.orderNumber,
+    total: Math.round(order.total),
   });
 
   const stale: string[] = [];

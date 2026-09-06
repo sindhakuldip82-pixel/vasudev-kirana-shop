@@ -9,66 +9,68 @@ function urlBase64ToUint8Array(base64String: string) {
   return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
 }
 
+function playChime() {
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.frequency.value = 880;
+    gain.gain.value = 0.08;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.25);
+  } catch (_) {}
+}
+
 export default function OrderAlerts() {
   const [enabled, setEnabled] = useState(false);
   const [status, setStatus] = useState('');
-  const lastOrderId = useRef<string | null>(null);
+  const alertedOrders = useRef<Set<string>>(new Set());
+
+  function announce(data: { orderId: string; title?: string; body?: string; message?: string }) {
+    if (!data.orderId || alertedOrders.current.has(data.orderId)) return;
+    alertedOrders.current.add(data.orderId);
+
+    try {
+      if (Notification.permission === 'granted') {
+        new Notification(data.title || '🔔 New Order — Vasudev Kirana Shop', {
+          body: data.body || 'A new order has arrived.',
+          tag: `vks-order-${data.orderId}`,
+          renotify: true,
+          requireInteraction: true,
+          icon: '/icons/icon-192.png',
+          data: { url: '/admin/orders', orderId: data.orderId },
+        });
+      }
+    } catch (_) {}
+
+    playChime();
+    try {
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(
+        new SpeechSynthesisUtterance(data.message || 'New order received.'),
+      );
+    } catch (_) {}
+  }
 
   useEffect(() => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+
     navigator.serviceWorker.register('/sw.js').catch(() => {});
 
-    if (Notification.permission === 'granted') setEnabled(true);
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function checkOrders() {
-      try {
-        const res = await fetch('/api/orders', { cache: 'no-store' });
-        if (!res.ok) return;
-        const data = await res.json();
-        const orders = data.orders || [];
-        if (!orders.length) return;
-
-        const newest = orders[0];
-        if (lastOrderId.current === null) {
-          lastOrderId.current = newest.id;
-          return;
-        }
-
-        if (newest.id !== lastOrderId.current) {
-          lastOrderId.current = newest.id;
-          const message = `New order received. ${newest.orderNumber}. Total rupees ${Math.round(newest.total)}.`;
-          try {
-            const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-            if (AudioCtx) {
-              const ctx = new AudioCtx();
-              const osc = ctx.createOscillator();
-              const gain = ctx.createGain();
-              osc.frequency.value = 880;
-              gain.gain.value = 0.08;
-              osc.connect(gain);
-              gain.connect(ctx.destination);
-              osc.start();
-              osc.stop(ctx.currentTime + 0.25);
-            }
-          } catch (_) {}
-          try {
-            window.speechSynthesis.cancel();
-            window.speechSynthesis.speak(new SpeechSynthesisUtterance(message));
-          } catch (_) {}
-        }
-      } catch (_) {}
-    }
-
-    if (!cancelled) checkOrders();
-    const timer = window.setInterval(checkOrders, 10000);
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
+    const onMessage = (event: MessageEvent) => {
+      const data = event.data || {};
+      if (data.type !== 'VKS_NEW_ORDER') return;
+      announce(data);
     };
+
+    navigator.serviceWorker.addEventListener('message', onMessage);
+    if (Notification.permission === 'granted') setEnabled(true);
+
+    return () => navigator.serviceWorker.removeEventListener('message', onMessage);
   }, []);
 
   async function enableAlerts() {
@@ -120,7 +122,7 @@ export default function OrderAlerts() {
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-sm font-bold text-gray-900">🔔 New Order Alerts</p>
-          <p className="text-xs text-gray-600 mt-1">Get a phone notification when a customer orders.</p>
+          <p className="text-xs text-gray-600 mt-1">One alert for every new order.</p>
         </div>
         <button
           onClick={enableAlerts}
