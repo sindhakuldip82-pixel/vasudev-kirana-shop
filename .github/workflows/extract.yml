@@ -15,10 +15,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Extract website ZIP
-  run: |
-    git fetch origin main
-    git reset --hard origin/main
-    rm -rf data public scripts src
+        run: |
+          rm -rf data public scripts src
           unzip -o vasudev-kirana-shop-updated.zip -d extracted
           cp -r extracted/vasudev-kirana-shop/. .
           rm -rf extracted
