@@ -17,7 +17,7 @@ jobs:
       - name: Extract website ZIP
         run: |
           rm -rf data public scripts src
-          unzip -o vasudev-kirana-shop-updated.zip -d extracted
+          unzip -o vasudev-kirana-shop-complete-fixed.zip -d extracted
           cp -r extracted/vasudev-kirana-shop/. .
           rm -rf extracted
           rm -f vasudev-kirana-shop-updated.zip
