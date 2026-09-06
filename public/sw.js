@@ -7,7 +7,7 @@ self.addEventListener('push', function (event) {
   }
 
   const title = data.title || '🔔 New Order — Vasudev Kirana Shop';
-  const orderId = data.orderId || String(Date.now());
+  const orderId = data.orderId || `push-${Date.now()}`;
   const options = {
     body: data.body || 'A new order has arrived.',
     icon: '/icons/icon-192.png',
@@ -17,7 +17,11 @@ self.addEventListener('push', function (event) {
     silent: false,
     requireInteraction: true,
     timestamp: Date.now(),
-    data: { url: data.url || '/admin/orders', orderId },
+    data: {
+      url: data.url || '/admin/orders',
+      orderId,
+      orderNumber: data.orderNumber || '',
+    },
   };
 
   event.waitUntil((async () => {
@@ -30,12 +34,16 @@ self.addEventListener('push', function (event) {
       }
     });
 
-    // If the admin page is currently visible, let the page create exactly one
-    // notification + voice/chime. Otherwise show a normal background push.
+    // If an admin tab is visible right now, let the page itself create the
+    // notification (plus chime/voice) so we don't double-fire — one native
+    // push banner AND one foreground alert for the same order. Otherwise
+    // (phone locked / app closed / tab in background) show a normal
+    // background push, which is the common Zomato-style case.
     if (visibleAdmin) {
       clientList.forEach((client) => client.postMessage({
         type: 'VKS_NEW_ORDER',
         orderId,
+        orderNumber: data.orderNumber || '',
         title,
         body: options.body,
         url: options.data.url,
@@ -56,11 +64,49 @@ self.addEventListener('notificationclick', function (event) {
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clientList) {
       for (const client of clientList) {
         if ('focus' in client) {
-          client.navigate(targetUrl);
+          if ('navigate' in client) {
+            try { client.navigate(targetUrl); } catch (_) {}
+          }
           return client.focus();
         }
       }
       if (clients.openWindow) return clients.openWindow(targetUrl);
     }),
   );
+});
+
+// Chrome/Android (and other browsers) can silently rotate or expire a push
+// subscription in the background — e.g. after ~a few weeks, or if Chrome
+// itself renews its underlying FCM token. Without this handler, the admin
+// would silently stop receiving alerts until they noticed and manually
+// clicked "Enable" again. We resubscribe automatically here and push the new
+// endpoint to the server so alerts keep flowing without any user action.
+self.addEventListener('pushsubscriptionchange', function (event) {
+  event.waitUntil((async () => {
+    try {
+      const applicationServerKey =
+        (event.oldSubscription && event.oldSubscription.options && event.oldSubscription.options.applicationServerKey) ||
+        (event.newSubscription && event.newSubscription.options && event.newSubscription.options.applicationServerKey);
+
+      let subscription = event.newSubscription;
+      if (!subscription && applicationServerKey) {
+        subscription = await self.registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey,
+        });
+      }
+      if (!subscription) return;
+
+      await fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(subscription.toJSON ? subscription.toJSON() : subscription),
+      });
+    } catch (_) {
+      // Best effort — there's no UI available inside the service worker to
+      // surface this failure. The admin's "Push subscription" diagnostic on
+      // the dashboard will show as inactive next time they open it.
+    }
+  })());
 });

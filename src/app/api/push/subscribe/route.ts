@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) {
       return NextResponse.json({ error: 'Invalid push subscription' }, { status: 400 });
     }
-    await savePushSubscription(subscription);
+    await savePushSubscription(subscription, req.headers.get('user-agent') || undefined);
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error('Push subscription save failed:', error);
