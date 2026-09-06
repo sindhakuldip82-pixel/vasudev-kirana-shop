@@ -5,6 +5,7 @@ import { isAdminAuthed } from '@/lib/auth';
 import { isValidIndianMobile } from '@/lib/validation';
 import { calculateDeliveryFee, calculatePrice } from '@/lib/pricing';
 import { Order, OrderItem } from '@/types';
+import { sendNewOrderNotification } from '@/lib/notifications';
 
 export async function GET(req: NextRequest) {
   const data = await readData();
@@ -134,6 +135,13 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('Order persistence failed:', error);
     return NextResponse.json({ error: 'storage_unavailable' }, { status: 503 });
+  }
+
+  try {
+    await sendNewOrderNotification(order);
+  } catch (error) {
+    // Never fail a successful customer order because notification delivery failed.
+    console.error('Order notification failed:', error);
   }
 
   return NextResponse.json({ order }, { status: 201 });

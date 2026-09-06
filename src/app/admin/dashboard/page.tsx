@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRequireAdmin } from '@/hooks';
 import AdminNav from '@/components/AdminNav';
 import { Order, Product } from '@/types';
+import OrderAlerts from '@/components/OrderAlerts';
 
 export default function AdminDashboardPage() {
   const { checking, authed } = useRequireAdmin();
@@ -48,6 +49,7 @@ export default function AdminDashboardPage() {
       <AdminNav />
       <div className="max-w-5xl mx-auto px-4 py-5">
         <h1 className="text-lg font-bold text-gray-900 mb-4">Dashboard</h1>
+        <OrderAlerts />
         {loading ? (
           <p className="text-sm text-gray-400">Loading...</p>
         ) : (
