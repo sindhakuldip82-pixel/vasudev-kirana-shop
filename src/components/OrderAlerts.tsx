@@ -60,7 +60,6 @@ export default function OrderAlerts() {
         new Notification(data.title || '🔔 New Order — Vasudev Kirana Shop', {
           body: data.body || 'A new order has arrived.',
           tag: `vks-order-${data.orderId}`,
-          renotify: true,
           requireInteraction: true,
           icon: '/icons/icon-192.png',
           data: { url: '/admin/orders', orderId: data.orderId },
