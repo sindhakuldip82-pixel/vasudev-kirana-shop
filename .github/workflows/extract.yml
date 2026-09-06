@@ -20,7 +20,7 @@ jobs:
           unzip -o vasudev-kirana-shop-complete-fixed.zip -d extracted
           cp -r extracted/vasudev-kirana-shop/. .
           rm -rf extracted
-          rm -f vasudev-kirana-shop-updated.zip
+          rm -f vasudev-kirana-shop-complete-fixed.zip
 
       - name: Commit website files
         run: |
