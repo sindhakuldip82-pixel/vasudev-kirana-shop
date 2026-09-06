@@ -139,6 +139,8 @@ export default function CheckoutPage() {
         return 'One of the items in your cart just went out of stock. Please review your cart.';
       case 'product_unavailable':
         return 'One of the items in your cart is no longer available. Please review your cart.';
+      case 'storage_unavailable':
+        return 'Orders are temporarily unavailable. Please use WhatsApp or try again in a moment.';
       default:
         return 'Could not place your order. Please try again.';
     }

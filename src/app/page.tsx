@@ -3,8 +3,8 @@ import HomeClient from './HomeClient';
 
 export const dynamic = 'force-dynamic';
 
-export default function HomePage() {
-  const data = readData();
+export default async function HomePage() {
+  const data = await readData();
   const activeProducts = data.products.filter((p) => p.isActive);
   const featured = activeProducts.filter((p) => p.isFeatured);
   const offers = activeProducts.filter((p) => !!p.offerBadge);

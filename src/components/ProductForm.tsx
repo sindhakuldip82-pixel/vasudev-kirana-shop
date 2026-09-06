@@ -117,7 +117,12 @@ export default function ProductForm({ categories, initial }: Props) {
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
-        setError('Could not save product. Please check your admin session and try again.');
+        let message = 'Could not save product.';
+        try {
+          const data = await res.json();
+          if (data?.error) message = String(data.error);
+        } catch {}
+        setError(message);
         setSaving(false);
         return;
       }

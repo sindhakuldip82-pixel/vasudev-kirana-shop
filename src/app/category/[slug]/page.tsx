@@ -4,8 +4,8 @@ import CategoryClient from './CategoryClient';
 
 export const dynamic = 'force-dynamic';
 
-export default function CategoryPage({ params }: { params: { slug: string } }) {
-  const data = readData();
+export default async function CategoryPage({ params }: { params: { slug: string } }) {
+  const data = await readData();
   const category = data.categories.find((c) => c.slug === params.slug);
   if (!category) notFound();
   const products = data.products.filter((p) => p.isActive && p.categoryId === category.id);

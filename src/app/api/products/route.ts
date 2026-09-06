@@ -5,7 +5,7 @@ import { isAdminAuthed } from '@/lib/auth';
 import { Product } from '@/types';
 
 export async function GET() {
-  const data = readData();
+  const data = await readData();
   // Public API only returns active products; admin uses the same endpoint but
   // can request all via ?all=1 (checked below is unnecessary for GET, kept simple).
   return NextResponse.json({ products: data.products });
@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   const body = await req.json();
-  const data = readData();
+  const data = await readData();
 
   const now = new Date().toISOString();
   const newProduct: Product = {
@@ -46,6 +46,6 @@ export async function POST(req: NextRequest) {
   };
 
   data.products.push(newProduct);
-  writeData(data);
+  await writeData(data);
   return NextResponse.json({ product: newProduct }, { status: 201 });
 }

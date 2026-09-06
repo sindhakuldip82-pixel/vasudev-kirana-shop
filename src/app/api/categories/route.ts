@@ -5,14 +5,14 @@ import { isAdminAuthed } from '@/lib/auth';
 import { Category } from '@/types';
 
 export async function GET() {
-  const data = readData();
+  const data = await readData();
   return NextResponse.json({ categories: data.categories.sort((a, b) => a.sortOrder - b.sortOrder) });
 }
 
 export async function POST(req: NextRequest) {
   if (!isAdminAuthed()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const body = await req.json();
-  const data = readData();
+  const data = await readData();
   const newCategory: Category = {
     id: generateId('cat-'),
     name: body.name,
@@ -23,6 +23,6 @@ export async function POST(req: NextRequest) {
     isActive: body.isActive ?? true,
   };
   data.categories.push(newCategory);
-  writeData(data);
+  await writeData(data);
   return NextResponse.json({ category: newCategory }, { status: 201 });
 }

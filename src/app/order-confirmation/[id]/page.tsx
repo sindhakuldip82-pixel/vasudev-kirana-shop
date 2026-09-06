@@ -4,8 +4,8 @@ import ConfirmationClient from './ConfirmationClient';
 
 export const dynamic = 'force-dynamic';
 
-export default function OrderConfirmationPage({ params }: { params: { id: string } }) {
-  const data = readData();
+export default async function OrderConfirmationPage({ params }: { params: { id: string } }) {
+  const data = await readData();
   const order = data.orders.find((o) => o.id === params.id);
   if (!order) notFound();
   return <ConfirmationClient order={order} />;

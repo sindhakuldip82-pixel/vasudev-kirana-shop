@@ -5,17 +5,17 @@ import { isAdminAuthed } from '@/lib/auth';
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   if (!isAdminAuthed()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const body = await req.json();
-  const data = readData();
+  const data = await readData();
   const idx = data.categories.findIndex((c) => c.id === params.id);
   if (idx === -1) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   data.categories[idx] = { ...data.categories[idx], ...body, id: data.categories[idx].id };
-  writeData(data);
+  await writeData(data);
   return NextResponse.json({ category: data.categories[idx] });
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
   if (!isAdminAuthed()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const data = readData();
+  const data = await readData();
   const inUse = data.products.some((p) => p.categoryId === params.id);
   if (inUse) {
     return NextResponse.json(
@@ -26,6 +26,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   const idx = data.categories.findIndex((c) => c.id === params.id);
   if (idx === -1) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   data.categories.splice(idx, 1);
-  writeData(data);
+  await writeData(data);
   return NextResponse.json({ success: true });
 }

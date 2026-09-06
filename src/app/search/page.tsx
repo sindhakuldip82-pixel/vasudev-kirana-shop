@@ -3,8 +3,8 @@ import SearchClient from './SearchClient';
 
 export const dynamic = 'force-dynamic';
 
-export default function SearchPage({ searchParams }: { searchParams: { q?: string } }) {
-  const data = readData();
+export default async function SearchPage({ searchParams }: { searchParams: { q?: string } }) {
+  const data = await readData();
   const q = (searchParams.q || '').trim().toLowerCase();
 
   const results = q

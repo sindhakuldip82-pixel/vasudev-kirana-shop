@@ -7,7 +7,7 @@ import { calculateDeliveryFee, calculatePrice } from '@/lib/pricing';
 import { Order, OrderItem } from '@/types';
 
 export async function GET(req: NextRequest) {
-  const data = readData();
+  const data = await readData();
   const { searchParams } = new URL(req.url);
   const phone = searchParams.get('phone');
 
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const data = readData();
+  const data = await readData();
 
   if (!data.deliverySettings.isShopOpen) {
     return NextResponse.json({ error: 'shop_closed' }, { status: 400 });
@@ -129,7 +129,12 @@ export async function POST(req: NextRequest) {
   };
 
   data.orders.push(order);
-  writeData(data);
+  try {
+    await writeData(data);
+  } catch (error) {
+    console.error('Order persistence failed:', error);
+    return NextResponse.json({ error: 'storage_unavailable' }, { status: 503 });
+  }
 
   return NextResponse.json({ order }, { status: 201 });
 }

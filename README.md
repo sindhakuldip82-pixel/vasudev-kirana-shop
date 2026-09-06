@@ -88,7 +88,6 @@ From the admin dashboard you can:
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=change-this-password
 JWT_SECRET=replace-with-a-long-random-secret
-NEXT_PUBLIC_SHOP_WHATSAPP_NUMBER=SHOP_WHATSAPP_NUMBER
 NEXT_PUBLIC_MAPS_API_KEY=
 RAZORPAY_KEY_ID=
 RAZORPAY_KEY_SECRET=
@@ -96,11 +95,10 @@ RAZORPAY_KEY_SECRET=
 
 - **ADMIN_USERNAME / ADMIN_PASSWORD** — admin login. Change before deploying.
 - **JWT_SECRET** — used to sign the admin session cookie. Use a long random string
-  in production (e.g. `openssl rand -hex 32`).
-- **NEXT_PUBLIC_SHOP_WHATSAPP_NUMBER** — a fallback used by the "Order on WhatsApp"
-  button on the homepage before the shop has configured a number in Admin → Settings.
-  The number actually used at checkout comes from **Admin → Settings → WhatsApp number**
-  (stored in `data/db.json`, editable any time without redeploying).
+  in production.
+- **WhatsApp number** — managed from **Admin → Settings → WhatsApp number**, so it can
+  be changed from the phone without editing code. The current seeded number is
+  `918799631012` (87996 31012).
 
 ## 5. How the variable-quantity pricing works
 
@@ -151,38 +149,29 @@ At checkout, tapping **"Order on WhatsApp"** does two things:
    in a new tab, with product list, quantities, subtotal/delivery/total, and a
    Google Maps link if the customer shared their location.
 
-Set the real number in **Admin → Settings → WhatsApp number** (digits only,
-international format, e.g. `919876543210`). Until you set it, the site uses the
-`SHOP_WHATSAPP_NUMBER` placeholder and WhatsApp links won't resolve to a real chat.
+The current number is already set to `918799631012`. You can change it later in
+**Admin → Settings → WhatsApp number** using digits only and international format.
 
-## 8. Database — how it works now, and how to upgrade it
+## 8. Storage on Vercel
 
-Right now the "database" is a single JSON file, `data/db.json`, read and written
-by `src/lib/db.ts`. This was chosen so the project **runs immediately with zero
-external services** — no database server to set up, no cloud account needed.
+The app keeps the simple `data/db.json` format for local development, but when it runs
+on Vercel it automatically switches to a **private Vercel Blob** document. This makes
+orders, product edits, categories, settings, and other admin changes persistent across
+serverless requests. Vercel's serverless filesystem is not durable/shared for application
+writes, so a persistent storage service is required in production.
 
-**This works great for:**
-- Local development
-- A single always-on Node.js server (e.g. a small VPS, Railway, Render, a
-  Raspberry Pi at the shop, etc.)
+### One-time Vercel setup
+1. Open this project in Vercel.
+2. Go to **Storage** and create/connect a **Blob** store.
+3. Connect it to **Production** (and Preview if you want preview deployments to use it).
+4. Redeploy the project.
 
-**This does NOT work for:**
-- Vercel or other serverless/edge platforms, because their filesystem is
-  read-only at runtime — writes (new orders, product edits) won't persist.
+The first production request seeds the private Blob from the bundled `data/db.json`, so
+the existing 11 demo products and categories are preserved. Product images uploaded from
+Admin are stored in Vercel Blob as public image objects instead of the serverless filesystem.
 
-### Upgrading to a real database
-The shape of `AppData` in `src/types/index.ts` (products, categories, orders,
-deliverySettings, shopSettings) maps directly onto database tables/collections.
-To swap in Postgres, Supabase, PlanetScale, MongoDB, or SQLite:
-
-1. Keep `readData()` / `writeData()` in `src/lib/db.ts` with the same signatures
-   (or split them into per-entity functions like `getProducts()`, `saveOrder()`, etc.).
-2. Replace the `fs.readFileSync` / `fs.writeFileSync` bodies with your ORM/client
-   calls (Prisma, Drizzle, the Supabase JS client, etc.).
-3. Nothing else needs to change — every API route only talks to `src/lib/db.ts`.
-
-Recommended for going live: **Supabase** (Postgres + easy hosting) or **SQLite via
-Turso**, both of which work well with Vercel.
+The app uses the same `readData()` / `writeData()` interface, so the rest of the API remains
+unchanged.
 
 ## 9. Deployment
 
@@ -196,11 +185,9 @@ a free TLS cert (Let's Encrypt / Caddy auto-HTTPS). Any small VPS (₹300–600/
 or Render/Railway "Web Service" works.
 
 ### Option B — Vercel (serverless)
-Works out of the box for browsing, but you must first migrate `data/db.json` to
-a real database (section 8) — otherwise product edits/orders made after deploy
-won't persist. Once migrated: `vercel --prod` (or connect the GitHub repo in the
-Vercel dashboard) and set the environment variables from `.env.example` in the
-Vercel project settings.
+Connect the GitHub repository, create/connect a Vercel Blob store, then deploy. The app
+automatically uses Blob for persistent JSON data and product-photo uploads on Vercel.
+Pushing to the production `main` branch creates the Production deployment.
 
 ## 10. Configuring things later
 
@@ -254,4 +241,4 @@ TypeScript/build error, it's most likely a missing `npm install` step or a typo
 introduced when copying — please report it and it can be fixed quickly.
 
 ## 11. Product photo upload
-Admin → Products → Add/Edit Product now supports uploading JPG, PNG and WebP images directly from a phone (up to 5 MB). Files are stored under `public/uploads/` and the returned `/uploads/...` URL is saved with the product. This local upload approach is intended for a persistent Node.js server; for serverless deployment, replace it with object storage such as Supabase Storage, S3, or Cloudinary.
+Admin → Products → Add/Edit Product supports uploading JPG, PNG and WebP images directly from a phone (up to 5 MB). On Vercel, uploads are stored in Vercel Blob and the returned public URL is saved with the product. Local development continues to use `public/uploads/`.

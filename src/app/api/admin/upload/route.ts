@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { put } from '@vercel/blob';
 import { isAdminAuthed } from '@/lib/auth';
 import fs from 'fs/promises';
 import path from 'path';
@@ -11,6 +12,10 @@ const ALLOWED = new Map([
   ['image/webp', '.webp'],
 ]);
 
+function useBlobStorage() {
+  return process.env.VERCEL === '1' || !!process.env.BLOB_READ_WRITE_TOKEN;
+}
+
 export async function POST(req: NextRequest) {
   if (!isAdminAuthed()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const form = await req.formData();
@@ -21,10 +26,19 @@ export async function POST(req: NextRequest) {
 
   const ext = ALLOWED.get(file.type)!;
   const filename = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}${ext}`;
+  const bytes = Buffer.from(await file.arrayBuffer());
+
+  if (useBlobStorage()) {
+    const blob = await put(`product-images/${filename}`, bytes, {
+      access: 'public',
+      addRandomSuffix: false,
+      contentType: file.type,
+    });
+    return NextResponse.json({ url: blob.url });
+  }
+
   const uploadDir = path.join(process.cwd(), 'public', 'uploads');
   await fs.mkdir(uploadDir, { recursive: true });
-  const bytes = Buffer.from(await file.arrayBuffer());
   await fs.writeFile(path.join(uploadDir, filename), bytes);
-
   return NextResponse.json({ url: `/uploads/${filename}` });
 }
