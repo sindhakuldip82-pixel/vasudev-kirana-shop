@@ -1,0 +1,31 @@
+name: Extract Kirana Website
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract website ZIP
+        run: |
+          rm -rf data public scripts src
+          unzip -o vasudev-kirana-shop-updated.zip -d extracted
+          cp -r extracted/vasudev-kirana-shop/. .
+          rm -rf extracted
+          rm -f vasudev-kirana-shop-updated.zip
+
+      - name: Commit website files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Extract complete Kirana website project" || echo "No changes to commit"
+          git push
