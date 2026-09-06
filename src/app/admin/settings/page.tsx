@@ -12,10 +12,11 @@ export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (!authed) return;
-    fetch('/api/settings')
+    fetch('/api/settings', { cache: 'no-store' })
       .then((r) => r.json())
       .then((d) => {
         setDelivery(d.deliverySettings);
@@ -25,16 +26,35 @@ export default function AdminSettingsPage() {
   }, [authed]);
 
   async function save() {
+    if (!delivery || !shop) return;
+
     setSaving(true);
     setSaved(false);
-    await fetch('/api/settings', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ deliverySettings: delivery, shopSettings: shop }),
-    });
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+    setError('');
+
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deliverySettings: delivery, shopSettings: shop }),
+        cache: 'no-store',
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error || 'Could not save settings.');
+      }
+
+      // Keep the form synced with exactly what the server stored.
+      setDelivery(data.deliverySettings);
+      setShop(data.shopSettings);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save settings.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (checking || !authed) return null;
@@ -109,6 +129,12 @@ export default function AdminSettingsPage() {
             </label>
           </div>
         </div>
+
+        {error && (
+          <div className="bg-red-50 text-red-700 text-sm rounded-xl px-3 py-2.5">
+            {error}
+          </div>
+        )}
 
         <button
           onClick={save}

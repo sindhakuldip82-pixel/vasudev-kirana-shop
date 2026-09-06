@@ -21,30 +21,29 @@ async function readBlobData(): Promise<AppData> {
     throw new Error('DATA_STORE_ID is not configured');
   }
 
-  try {
-    const result = await get(BLOB_PATH, {
-      access: 'private',
-      storeId: DB_STORE_ID,
-      useCache: false,
-    });
+  const result = await get(BLOB_PATH, {
+    access: 'private',
+    storeId: DB_STORE_ID,
+    useCache: false,
+  });
 
-    if (!result) throw new Error('Blob database not found');
-
+  if (result) {
     const raw = await new Response(result.stream).text();
     return JSON.parse(raw) as AppData;
-  } catch {
-    const initial = readLocalData();
-
-    await put(BLOB_PATH, JSON.stringify(initial, null, 2), {
-      access: 'private',
-      storeId: DB_STORE_ID,
-      addRandomSuffix: false,
-      allowOverwrite: true,
-      contentType: 'application/json',
-    });
-
-    return initial;
   }
+
+  // Only seed the Blob store when the database file genuinely does not exist.
+  // Do not overwrite existing remote data when a read/auth/network error occurs.
+  const initial = readLocalData();
+  await put(BLOB_PATH, JSON.stringify(initial, null, 2), {
+    access: 'private',
+    storeId: DB_STORE_ID,
+    addRandomSuffix: false,
+    allowOverwrite: false,
+    contentType: 'application/json',
+  });
+
+  return initial;
 }
 
 export async function readData(): Promise<AppData> {
